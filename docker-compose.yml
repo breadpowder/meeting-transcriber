@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  meeting-transcriber:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: meeting-transcriber:latest
+    container_name: meeting-transcriber
+
+    # GPU support
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    # Environment variables
+    env_file:
+      - .env
+
+    # Volumes
+    volumes:
+      - ./audio:/app/audio:ro  # Mount audio files (read-only)
+      - ./output:/app/output   # Mount output directory
+      - ./models:/root/.cache/huggingface  # Cache Whisper models
+
+    # Working directory
+    working_dir: /app
+
+    # Keep container running (for interactive use)
+    stdin_open: true
+    tty: true

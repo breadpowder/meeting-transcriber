@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1
+FROM debian:12-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ffmpeg \
+        alsa-utils \
+        pulseaudio-utils \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Default location for mounted recordings
+WORKDIR /work
+
+ENTRYPOINT ["ffmpeg"]
