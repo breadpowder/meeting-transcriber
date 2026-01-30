@@ -63,6 +63,19 @@ echo -e "${GREEN}Creating symlink: $INSTALL_PATH -> $SCRIPT_PATH${NC}"
 ln -s "$SCRIPT_PATH" "$INSTALL_PATH"
 chmod +x "$SCRIPT_PATH"
 
+# Create symlink to meeting.sh (unified workflow)
+MEETING_SCRIPT="$PROJECT_DIR/meeting.sh"
+MEETING_INSTALL="$INSTALL_DIR/meeting"
+
+if [ -L "$MEETING_INSTALL" ] || [ -f "$MEETING_INSTALL" ]; then
+    echo -e "${YELLOW}Removing existing installation: $MEETING_INSTALL${NC}"
+    rm -f "$MEETING_INSTALL"
+fi
+
+echo -e "${GREEN}Creating symlink: $MEETING_INSTALL -> $MEETING_SCRIPT${NC}"
+ln -s "$MEETING_SCRIPT" "$MEETING_INSTALL"
+chmod +x "$MEETING_SCRIPT"
+
 # Set up environment variable
 SHELL_RC=""
 if [ -n "$BASH_VERSION" ]; then
@@ -109,17 +122,22 @@ echo -e "${GREEN}===============================================================
 echo -e "${GREEN}✓ Installation Complete!${NC}"
 echo -e "${GREEN}=====================================================================${NC}"
 echo ""
-echo "Command installed as: ${BLUE}transcribe${NC}"
+echo "Commands installed:"
+echo "  ${BLUE}transcribe${NC} - Transcribe existing audio files"
+echo "  ${BLUE}meeting${NC}    - Record and auto-transcribe (unified workflow)"
+echo ""
 echo "Project location: ${BLUE}$PROJECT_DIR${NC}"
 echo ""
 echo "Usage:"
-echo "  transcribe meeting.mp3"
-echo "  transcribe /path/to/audio.mp3 --detailed-notes"
-echo "  transcribe ~/Downloads/meeting.wav -m gpt-4o"
+echo "  ${BLUE}meeting --name daily-sync${NC}"
+echo "      Record audio, press Ctrl+C to stop, auto-transcribes with detailed notes"
+echo ""
+echo "  ${BLUE}transcribe meeting.mp3${NC}"
+echo "      Transcribe an existing audio file"
 echo ""
 echo "To use immediately:"
 echo "  source $SHELL_RC"
-echo "  transcribe --help"
+echo "  meeting --help"
 echo ""
 echo "Or simply open a new terminal window"
 echo ""

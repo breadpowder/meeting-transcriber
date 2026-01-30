@@ -23,6 +23,7 @@ services:
 
     # Volumes
     volumes:
+      - ./src:/app/src         # Mount source for live changes (dev)
       - ./audio:/app/audio:ro  # Mount audio files (read-only)
       - ./output:/app/output   # Mount output directory
       - ./models:/root/.cache/huggingface  # Cache Whisper models

@@ -216,6 +216,7 @@ main() {
   build_docker_args
   run_container
   echo "Recording saved to ${RELATIVE_PATH}"
+  echo "RECORDING_FILE:${RECORDING_PATH}"
 }
 
 main "$@"

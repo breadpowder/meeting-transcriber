@@ -8,7 +8,7 @@ from openai import OpenAI
 from ..core.config import Settings
 from ..core.exceptions import SummarizationError
 from ..core.logging_config import get_logger
-from ..models.detailed_notes import DetailedMeetingNotes, NoteSection
+from ..models.detailed_notes import BulletPoint, DetailedMeetingNotes, NoteSection
 from ..models.transcript import TranscriptResult
 
 
@@ -21,44 +21,70 @@ class DetailedNotesService:
     preserving all details discussed.
     """
 
-    SYSTEM_PROMPT = """You are an expert meeting note-taker who transforms oral meeting transcripts into detailed, well-structured written notes.
+    SYSTEM_PROMPT = """You are an expert meeting note-taker who transforms oral transcripts into well-structured written notes using bullet points.
 
-Your task is to:
-1. Paraphrase ALL oral content into clear, professional written prose
-2. Preserve ALL details, discussions, and information from the meeting
-3. Organize content chronologically with logical section breaks
-4. Transform conversational speech into polished written language
-5. Maintain the original language (English or Chinese) for each section
-6. Include approximate timestamps for each major section/topic
+CRITICAL REQUIREMENTS:
+1. The meeting_title MUST be descriptive (e.g., "Voice Pipeline Architecture and Deployment Strategy for Paytm"), NOT generic like "Meeting Notes"
+2. ALL content MUST be bullet points - NO paragraphs allowed
+3. Group content by TOPIC, not chronologically
+4. Include timestamps [MM:SS] as sub-bullets for context
+5. DO NOT include participants, terminology, or metadata sections
 
-DO NOT:
-- Summarize or condense information
-- Skip any discussed topics or details
-- Remove context or explanations
-- Create bullet points unless they were explicitly enumerated in the meeting
+SECTION ORGANIZATION (follow this flow):
+1. **Overview/Architecture Section** - Start with high-level understanding
+2. **Configuration/Strategy Section** - How things work or are approached
+3. **Implementation/Technical Details Section** - Current state and specifics
+4. **Next Steps/Action Items Section** - ALWAYS include this as final section with:
+   - Immediate priorities (short-term items)
+   - Integration/approach strategy
+   - Development/environment needs
 
-The goal is to create comprehensive meeting notes that someone who missed the meeting can read to understand EVERYTHING that was discussed, as if they were there.
+BULLET POINT PATTERNS:
+- Use category bullets that end with `:` when listing related items
+- Use arrows (→) for process flows
+- Main bullets = concepts/categories
+- Sub-bullets = specific details, examples, timestamps
 
-Return a JSON object with this structure:
+EXAMPLE STRUCTURE:
+## Section Title
+- Category or concept:
+  - Specific detail
+  - Another detail
+  - [MM:SS] Timestamp context
+- Process flow: Step 1 → Step 2 → Step 3
+- Another main point
+  - Supporting detail
+
+PRESERVE ALL INFORMATION - transform speech into clear bullet points.
+
+Return JSON:
 {
-  "meeting_title": "Main topic or meeting purpose",
-  "date_time": "Date/time if mentioned, otherwise empty string",
-  "participants": ["name1", "name2"],
+  "meeting_title": "Specific descriptive title of the meeting topic",
   "sections": [
     {
-      "title": "Section topic",
-      "timestamp": "MM:SS",
-      "content": [
-        "First paragraph of detailed content...",
-        "Second paragraph continuing the discussion...",
-        "Third paragraph with more details..."
+      "title": "Overview/Architecture Section Title",
+      "bullets": [
+        {
+          "text": "Category or concept:",
+          "sub_bullets": ["Detail 1", "Detail 2", "[MM:SS] Timestamp"]
+        }
+      ]
+    },
+    {
+      "title": "Next Steps and Action Items",
+      "bullets": [
+        {
+          "text": "Immediate priorities:",
+          "sub_bullets": ["Priority item 1", "Priority item 2"]
+        },
+        {
+          "text": "Integration strategy:",
+          "sub_bullets": ["Approach detail"]
+        }
       ]
     }
-  ],
-  "key_terminology": ["term1: explanation", "term2: explanation"]
+  ]
 }
-
-Each section should contain multiple paragraphs that fully capture the discussion in that timeframe.
 """
 
     def __init__(self, settings: Settings):
@@ -154,7 +180,8 @@ Each section should contain multiple paragraphs that fully capture the discussio
             [
                 "",
                 "Task: Transform this oral transcript into detailed, well-structured written meeting notes.",
-                "Preserve ALL information and details. Organize chronologically with clear section breaks.",
+                "Use bullet points with sub-bullets. Group by topic, not chronologically.",
+                "Include timestamps as sub-bullets [MM:SS] for context.",
             ]
         )
 
@@ -170,22 +197,27 @@ Each section should contain multiple paragraphs that fully capture the discussio
         Returns:
             Parsed DetailedMeetingNotes
         """
-        # Parse sections
-        sections = [
-            NoteSection(
-                title=section.get("title", ""),
-                timestamp=section.get("timestamp", "00:00"),
-                content=section.get("content", []),
+        # Parse sections with bullet structure
+        sections = []
+        for section in data.get("sections", []):
+            bullets = []
+            for bullet_data in section.get("bullets", []):
+                bullet = BulletPoint(
+                    text=bullet_data.get("text", ""),
+                    sub_bullets=bullet_data.get("sub_bullets", []),
+                )
+                bullets.append(bullet)
+
+            sections.append(
+                NoteSection(
+                    title=section.get("title", ""),
+                    bullets=bullets,
+                )
             )
-            for section in data.get("sections", [])
-        ]
 
         return DetailedMeetingNotes(
             meeting_title=data.get("meeting_title", "Meeting Notes"),
-            date_time=data.get("date_time", ""),
-            participants=data.get("participants", []),
             sections=sections,
-            key_terminology=data.get("key_terminology", []),
         )
 
     @staticmethod
