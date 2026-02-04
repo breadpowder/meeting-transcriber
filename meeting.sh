@@ -148,8 +148,15 @@ trap "rm -f $TEMP_OUTPUT" EXIT
 # Use a subshell to handle the recording and capture its output
 set +e  # Don't exit on error (Ctrl+C causes non-zero exit)
 "$START_SCRIPT" "${RECORD_ARGS[@]}" 2>&1 | tee "$TEMP_OUTPUT"
-RECORD_EXIT=$?
+RECORD_EXIT=${PIPESTATUS[0]}
 set -e
+
+# Check for recording errors (exit code 1 = error, 130 = Ctrl+C which is expected)
+# Exit codes 128+ are signals (130 = 128 + SIGINT), which are normal for Ctrl+C stop
+if [ "$RECORD_EXIT" -ne 0 ] && [ "$RECORD_EXIT" -lt 128 ]; then
+    echo -e "${RED}Error: Recording failed (exit code $RECORD_EXIT).${NC}"
+    exit 1
+fi
 
 # Extract recording file path from output
 RECORDING_FILE=$(grep "^RECORDING_FILE:" "$TEMP_OUTPUT" | tail -1 | cut -d: -f2-)

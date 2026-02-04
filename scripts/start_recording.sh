@@ -186,6 +186,29 @@ build_docker_args() {
   esac
 }
 
+check_audio_input() {
+  echo "Checking audio input device..."
+
+  local check_cmd
+  if [[ "${INPUT_FORMAT}" == "pulse" ]]; then
+    # Check PulseAudio: verify server responds and has a non-monitor, non-suspended input source
+    # Filter out .monitor sources (they capture output, not microphone input)
+    # Check that at least one real input source is not SUSPENDED
+    check_cmd='pactl info >/dev/null 2>&1 || exit 1; pactl list sources short | grep -v "\.monitor" | grep -qv "SUSPENDED" || exit 1'
+  else
+    # Check ALSA: verify capture devices exist
+    check_cmd="arecord -l 2>/dev/null | grep -q 'card' || exit 1"
+  fi
+
+  if ! docker run --rm "${DOCKER_ARGS[@]}" --entrypoint /bin/sh "${IMAGE_TAG}" -c "${check_cmd}"; then
+    echo "Error: No working audio input device detected." >&2
+    echo "Please ensure your microphone is connected and enabled." >&2
+    exit 1
+  fi
+
+  echo "Audio input device OK."
+}
+
 run_container() {
   local ffmpeg_cmd=(
     "-hide_banner"
@@ -214,6 +237,7 @@ main() {
   HOST_OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
   prepare_output_path
   build_docker_args
+  check_audio_input
   run_container
   echo "Recording saved to ${RELATIVE_PATH}"
   echo "RECORDING_FILE:${RECORDING_PATH}"
